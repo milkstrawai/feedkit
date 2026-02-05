@@ -1,0 +1,19 @@
+# frozen_string_literal: true
+
+Feeder.configure do |config|
+  # Table name for feeds (default: 'feeder_feeds')
+  # config.table_name = 'feeder_feeds'
+
+  # Association name for the feeds relationship (default: :feeds)
+  # config.association_name = :feeds
+
+  # Paths to search for generator classes (default: ['app/generators/**/*.rb'])
+  # config.generator_paths = ['app/generators/**/*.rb']
+
+  # Primary key type for owner_id (default: :bigint)
+  # Set to :uuid if your models use UUID primary keys
+  config.owner_id_type = :<%= owner_id_type %>
+
+  # Logger for Feeder (defaults to Rails.logger)
+  # config.logger = Rails.logger
+end
