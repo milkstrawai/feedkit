@@ -1,0 +1,547 @@
+# Feeder
+
+[![Gem Version](https://badge.fury.io/rb/feeder.svg)](https://badge.fury.io/rb/feeder)
+[![Build Status](https://github.com/milkstrawai/feeder/actions/workflows/main.yml/badge.svg)](https://github.com/milkstrawai/feeder/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**Scheduled feed generation for Rails applications.**
+
+Feeder is a Rails engine that lets you define generator classes that produce structured data feeds on a schedule. Generators auto-register when they inherit from `Feeder::Generator` — define your class anywhere, add a schedule, and Feeder handles the rest.
+
+## Table of Contents
+
+- [The Problem](#the-problem)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Generators](#generators)
+- [Scheduling](#scheduling)
+- [Ad-hoc Generators](#ad-hoc-generators)
+- [Querying Feeds](#querying-feeds)
+- [Configuration](#configuration)
+- [How It Works](#how-it-works)
+- [Requirements](#requirements)
+- [Roadmap](#roadmap)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
+
+## The Problem
+
+Applications often need to produce periodic data summaries — cost reports, usage digests, analytics snapshots. The typical approach scatters this logic across cron jobs, service objects, and ad-hoc scripts. When you have multiple report types, each with its own schedule, deduplication, and storage, things get messy fast.
+
+Feeder gives you a single pattern: define a generator class, declare its schedule, implement a `#data` method that returns a hash. Feeder handles dispatching, deduplication, and persistence.
+
+## Installation
+
+Add Feeder to your Gemfile:
+
+```ruby
+gem 'feeder'
+```
+
+Install and run the generator:
+
+```bash
+bundle install
+rails generate feeder:install
+rails db:migrate
+```
+
+This creates three things:
+- `config/initializers/feeder.rb` — configuration file
+- A migration for the `feeder_feeds` table
+- `app/generators/` — directory for your generator classes
+
+> **Note:** Feeder currently requires PostgreSQL. The migration uses `jsonb` for the feed data column.
+
+If your models use UUID primary keys, pass the `--owner_id_type` option:
+
+```bash
+rails generate feeder:install --owner_id_type=uuid
+```
+
+## Quick Start
+
+### 1. Include `FeedsOwner` in your model
+
+```ruby
+class Organization < ApplicationRecord
+  include Feeder::FeedsOwner
+end
+```
+
+This adds a `feeds` association to the model.
+
+### 2. Generate a feed generator
+
+```bash
+rails generate feeder:generator CostOverview --owner Organization
+```
+
+This creates `app/generators/cost_overview.rb` and a corresponding test file.
+
+### 3. Implement the `#data` method
+
+```ruby
+class CostOverview < Feeder::Generator
+  owned_by Organization
+
+  schedule every: 1.day, at: { hour: 13 }, as: :daily
+  schedule every: 1.week, at: { hour: 14, weekday: :tuesday }, as: :weekly
+
+  private
+
+  def data
+    return if owner.costs.none?
+
+    {
+      total_cost: owner.costs.sum(:amount),
+      top_services: owner.costs.group(:service).sum(:amount).sort_by { |_, v| -v }.first(5)
+    }
+  end
+end
+```
+
+Return a hash to create a feed, or `nil` to skip.
+
+### 4. Schedule the dispatch job
+
+Feeder needs a cron-like scheduler to trigger `Feeder::DispatchJob` periodically. With [GoodJob](https://github.com/bensheldon/good_job):
+
+```ruby
+# config/initializers/good_job.rb
+config.cron = {
+  feeder_dispatch: { cron: '0 * * * *', class: 'Feeder::DispatchJob' }
+}
+```
+
+With [Sidekiq](https://github.com/sidekiq/sidekiq):
+
+```yaml
+# config/sidekiq_cron.yml
+feeder_dispatch:
+  cron: '0 * * * *'
+  class: Feeder::DispatchJob
+```
+
+How often you run the dispatch job depends on your schedules. Running it hourly works well for most setups — it only enqueues work for generators that are actually due.
+
+## Generators
+
+A generator is a class that inherits from `Feeder::Generator`. It defines what data to produce, for which owner model, and on what schedule.
+
+```ruby
+class WeeklyDigest < Feeder::Generator
+  owned_by Organization
+
+  schedule every: 1.week, at: { hour: 9, weekday: :monday }, as: :weekly
+
+  private
+
+  def data
+    {
+      active_users: owner.users.active.count,
+      new_signups: owner.users.where(created_at: 1.week.ago..).count
+    }
+  end
+end
+```
+
+### Auto-registration
+
+Generators are automatically registered when their class is loaded. There is no manual registration step. Define the class, and Feeder discovers it.
+
+In production (with `config.eager_load = true`), Rails loads all classes at boot, so all generators in `app/generators/` are registered automatically.
+
+In development, Feeder calls `eager_load_generators!` before each dispatch cycle to ensure all generator files are loaded from the configured `generator_paths`.
+
+### The `#data` method
+
+This is the only method you need to implement. It receives no arguments — access the owner via the `owner` accessor.
+
+- Return a **Hash** to create a feed record with that data
+- Return **`nil`** to skip feed creation (useful for conditional feeds)
+
+### The `owner` accessor
+
+Inside your generator, `owner` gives you the model instance that the feed belongs to. Use it to query for the data you need.
+
+### The `options` accessor
+
+Generators accept arbitrary keyword arguments that are available via the `options` accessor. This is useful for passing context when triggering generators manually:
+
+```ruby
+class AuditReport < Feeder::Generator
+  owned_by Organization
+
+  private
+
+  def data
+    {
+      findings: owner.run_audit,
+      requested_by: options[:requested_by],
+      scope: options[:scope] || "full"
+    }
+  end
+end
+
+# Pass options when calling
+AuditReport.new(organization, requested_by: "admin@example.com", scope: "billing").call
+```
+
+### Generator scaffolding
+
+The generator generator (yes) creates a class file and a test:
+
+```bash
+# With an owner
+rails generate feeder:generator MonthlySummary --owner Organization
+
+# Without an owner (for ownerless generators)
+rails generate feeder:generator SystemHealthCheck
+```
+
+## Scheduling
+
+### The `schedule` DSL
+
+Each generator can define one or more schedules:
+
+```ruby
+schedule every: <period>, at: <conditions>, as: <name>, superseded_by: <names>
+```
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `every:` | Yes | Any `ActiveSupport::Duration` — `1.hour`, `1.day`, `1.week`, `2.weeks`, `1.month`, `1.year`, `6.hours`, etc. |
+| `at:` | Yes | Hash of conditions that must all match for the schedule to be due |
+| `as:` | No | Name for this schedule (auto-generated from period and conditions if omitted) |
+| `superseded_by:` | No | Array of schedule names that take precedence when both are due |
+
+### Conditions
+
+Conditions are AND-ed together. All must match for the schedule to fire.
+
+| Condition | Values | Examples |
+|-----------|--------|---------|
+| `hour:` | `0..23` | `hour: 6`, `hour: [6, 12, 18]`, `hour: 9..17` |
+| `day:` | `1..31`, `:first`, `:last` | `day: 1`, `day: :last`, `day: 1..15` |
+| `weekday:` | `0..6`, `:sunday`..`:saturday` | `weekday: :monday`, `weekday: :monday..:friday` |
+| `week:` | `1..53`, `:even`, `:odd` | `week: 42`, `week: :even` |
+| `month:` | `1..12`, `:january`..`:december` | `month: :january`, `month: :january..:march` |
+
+All condition types accept integers, symbols (where applicable), ranges, and arrays.
+
+### Examples
+
+```ruby
+# Every day at 6 AM
+schedule every: 1.day, at: { hour: 6 }, as: :daily
+
+# Every Monday at 7 AM
+schedule every: 1.week, at: { hour: 7, weekday: :monday }, as: :weekly
+
+# First of every month at 8 AM
+schedule every: 1.month, at: { hour: 8, day: 1 }, as: :monthly
+
+# January 15 at 9 AM (yearly)
+schedule every: 1.year, at: { hour: 9, month: :january, day: 15 }, as: :annual
+
+# Every even week
+schedule every: 2.weeks, at: { hour: 6, week: :even }
+
+# Weekdays only at 6 AM
+schedule every: 1.day, at: { hour: 6, weekday: :monday..:friday }
+
+# Multiple times per day
+schedule every: 1.day, at: { hour: [6, 12, 18] }
+
+# Q1 only
+schedule every: 1.month, at: { hour: 6, day: 1, month: :january..:march }
+```
+
+### Schedule precedence with `superseded_by`
+
+When a generator has multiple schedules, you sometimes want a longer-period schedule to take precedence. For example, you don't want both a daily and weekly feed generated on the same Monday morning.
+
+```ruby
+class CostOverview < Feeder::Generator
+  owned_by Organization
+
+  schedule every: 1.day, at: { hour: 6 }, as: :daily,
+           superseded_by: %i[weekly monthly]
+
+  schedule every: 1.week, at: { hour: 6, weekday: :monday }, as: :weekly,
+           superseded_by: :monthly
+
+  schedule every: 1.month, at: { hour: 6, day: 1 }, as: :monthly
+
+  private
+
+  def data
+    { total: owner.costs.sum(:amount) }
+  end
+end
+```
+
+On a regular Tuesday at 6 AM, only `:daily` fires. On a Monday at 6 AM, only `:weekly` fires (`:daily` is superseded). On the 1st of the month at 6 AM if it's a Monday, only `:monthly` fires (both `:daily` and `:weekly` are superseded).
+
+### Deduplication
+
+Scheduled generators automatically deduplicate within their period. If a daily generator already created a feed for today, calling it again is a no-op. This prevents duplicates if the dispatch job runs more than once in the same period.
+
+Deduplication checks `created_at > period.ago` scoped to the owner and feed type. No configuration needed.
+
+## Ad-hoc Generators
+
+Not every generator needs a schedule. You can define generators that are triggered manually from controllers, jobs, or the console.
+
+### Ownerless generator
+
+```ruby
+class SystemHealthReport < Feeder::Generator
+  private
+
+  def data
+    {
+      memory_usage: calculate_memory,
+      cpu_load: calculate_cpu,
+      checked_at: Time.current
+    }
+  end
+end
+
+# Trigger from anywhere
+SystemHealthReport.new.call
+```
+
+### Owned but unscheduled
+
+```ruby
+class AuditReport < Feeder::Generator
+  owned_by Organization
+
+  private
+
+  def data
+    { findings: owner.run_audit }
+  end
+end
+
+# Trigger manually
+AuditReport.new(organization).call
+```
+
+Ad-hoc generators (no schedule) skip deduplication entirely — each call creates a new feed.
+
+## Querying Feeds
+
+### Via the owner association
+
+```ruby
+organization.feeds                                    # All feeds
+organization.feeds.by_type(:cost_overview)            # Filter by generator
+organization.feeds.by_type(:cost_overview).recent(10) # Latest 10
+organization.feeds.latest                             # Ordered by newest first
+```
+
+### Via the Feed model directly
+
+```ruby
+Feeder::Feed.for_owner(organization).latest
+Feeder::Feed.by_type(:system_health_report).recent(5)
+```
+
+### Available scopes
+
+| Scope | Description |
+|-------|-------------|
+| `for_owner(owner)` | Feeds belonging to a specific owner |
+| `by_type(type)` | Feeds of a specific generator type |
+| `latest` | Ordered by `created_at DESC` |
+| `recent(n)` | Latest `n` feeds (default: 50) |
+
+### Feed attributes
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `owner` | Polymorphic | The owner record (can be `nil` for ownerless feeds) |
+| `feed_type` | String | Derived from the generator class name (e.g., `"cost_overview"`) |
+| `period_name` | String | Schedule name (e.g., `"daily"`, `"weekly"`) or `nil` for ad-hoc |
+| `data` | Hash | The payload returned by `#data` (stored as `jsonb`) |
+| `created_at` | DateTime | When the feed was generated |
+
+## Configuration
+
+The install generator creates `config/initializers/feeder.rb`:
+
+```ruby
+Feeder.configure do |config|
+  # Table name for the feeds table (default: 'feeder_feeds')
+  # config.table_name = 'feeder_feeds'
+
+  # Association name added to owner models (default: :feeds)
+  # config.association_name = :feeds
+
+  # Glob paths to load generator classes in development (default: ['app/generators/**/*.rb'])
+  # Only used when Rails eager loading is disabled (development mode)
+  # config.generator_paths = ['app/generators/**/*.rb']
+
+  # Primary key type for the owner_id column (default: :bigint)
+  # Set before running the migration
+  config.owner_id_type = :bigint
+
+  # Logger instance (defaults to Rails.logger)
+  # config.logger = Rails.logger
+end
+```
+
+### Configuration Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `table_name` | `'feeder_feeds'` | Database table name for feed records |
+| `association_name` | `:feeds` | Name of the `has_many` association added to owner models |
+| `generator_paths` | `['app/generators/**/*.rb']` | Glob patterns for loading generators in development |
+| `owner_id_type` | `:bigint` | Column type for `owner_id` (`:bigint` or `:uuid`) |
+| `logger` | `Rails.logger` | Logger instance for Feeder's internal logging |
+
+## How It Works
+
+### Architecture
+
+Feeder has four main components:
+
+1. **Generator** — Base class with auto-registration via Ruby's `inherited` hook. When you define `class MyGen < Feeder::Generator`, it's automatically added to the registry.
+
+2. **Registry** — Tracks all generator classes. Knows which are scheduled, which have owners, and which are due at any given time.
+
+3. **DispatchJob** — An ActiveJob that asks the registry "what's due right now?", then enqueues a `GenerateFeedJob` for each owner of each due generator.
+
+4. **GenerateFeedJob** — An ActiveJob that instantiates a single generator for a single owner, calls `#data`, and persists the result as a `Feeder::Feed` record.
+
+### Dispatch Flow
+
+```
+DispatchJob (hourly cron)
+  → Registry.due_at(Time.current)
+    → For each due generator:
+      → generator.owner_class.find_each do |owner|
+        → GenerateFeedJob.perform_later(owner, generator, period_name)
+          → generator.new(owner, period_name:).call
+            → Check deduplication (skip if already generated this period)
+            → Call #data (skip if nil)
+            → Create Feeder::Feed record
+```
+
+### Error Handling
+
+`GenerateFeedJob` handles errors gracefully:
+
+- **Owner deleted** between dispatch and execution — the job is silently skipped (the record no longer exists, so there's nothing to generate for)
+- **Generator errors** — logged via `Feeder.logger` with the full backtrace, job does not re-raise
+
+### Database Schema
+
+The migration creates a `feeder_feeds` table with three indexes:
+
+| Index | Columns | Purpose |
+|-------|---------|---------|
+| `created_at` | `created_at` | Ordering and pagination |
+| `idx_feeder_feeds_lookup` | `owner_type, owner_id, feed_type, created_at` | Querying feeds for an owner |
+| `idx_feeder_feeds_dedup` | `owner_type, owner_id, feed_type, period_name` | Deduplication checks |
+
+## Requirements
+
+- **Ruby** >= 3.2
+- **Rails** >= 7.0
+- **PostgreSQL** (for `jsonb` column support)
+- **ActiveJob backend** (GoodJob, Sidekiq, etc.) with cron/recurring job support
+
+## Roadmap
+
+Features we're considering for future releases:
+
+- [ ] **MySQL support** — Adapter pattern for non-PostgreSQL databases (currently requires `jsonb`)
+- [ ] **Feed retention policies** — Auto-cleanup of old feeds based on age or count per generator
+- [ ] **Callbacks** — `before_generate` and `after_generate` hooks for logging, notifications, or side effects
+- [ ] **Web dashboard** — Mountable engine with a UI for browsing feeds and monitoring generator health
+- [ ] **Feed versioning** — Schema version tracking for feed data to handle generator changes over time
+
+Have a feature request? [Open an issue](https://github.com/milkstrawai/feeder/issues) to discuss it!
+
+## Development
+
+### Setup
+
+```bash
+git clone https://github.com/milkstrawai/feeder.git
+cd feeder
+bundle install
+```
+
+### Running Tests
+
+```bash
+# Run test suite
+bundle exec rake test
+
+# Run with coverage report
+bundle exec rake test && open coverage/index.html
+
+# Run linter
+bundle exec rubocop
+
+# Run both (default rake task)
+bundle exec rake
+
+# Run against a specific Rails version
+bundle exec appraisal rails-8-1 rake test
+
+# Run against all Rails versions
+bundle exec appraisal rake test
+```
+
+### Test Coverage
+
+The project maintains high test coverage standards:
+- Line coverage: 100%
+- Branch coverage: 90%
+
+### Multi-version Testing
+
+Feeder is tested against a matrix of Ruby and Rails versions using [Appraisal](https://github.com/thoughtbot/appraisal):
+
+| | Rails 7.0 | Rails 7.1 | Rails 7.2 | Rails 8.0 | Rails 8.1 |
+|---|---|---|---|---|---|
+| Ruby 3.2 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Ruby 3.3 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Ruby 3.4 | — | ✓ | ✓ | ✓ | ✓ |
+
+## Contributing
+
+Contributions are welcome! Here's how you can help:
+
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open** a Pull Request
+
+### Guidelines
+
+- Write tests for new features
+- Follow existing code style (RuboCop will help)
+- Update documentation as needed
+- Keep commits focused and atomic
+
+### Reporting Issues
+
+Found a bug? Please open an issue with:
+- Ruby and Rails versions
+- Steps to reproduce
+- Expected vs actual behavior
+
+## License
+
+Feeder is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
