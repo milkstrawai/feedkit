@@ -1,0 +1,19 @@
+# frozen_string_literal: true
+
+class CreateFeedkitFeeds < ActiveRecord::Migration[<%= ActiveRecord::Migration.current_version %>]
+  def change
+    create_table :feedkit_feeds do |t|
+      t.string :owner_type
+      t.<%= owner_id_type %> :owner_id
+      t.string :feed_type, null: false
+      t.string :period_name
+      t.jsonb :data, null: false, default: {}
+
+      t.timestamps
+    end
+
+    add_index :feedkit_feeds, :created_at
+    add_index :feedkit_feeds, %i[owner_type owner_id feed_type created_at], name: 'idx_feedkit_feeds_lookup'
+    add_index :feedkit_feeds, %i[owner_type owner_id feed_type period_name], name: 'idx_feedkit_feeds_dedup'
+  end
+end

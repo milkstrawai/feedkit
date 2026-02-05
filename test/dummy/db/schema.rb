@@ -6,7 +6,7 @@ ActiveRecord::Schema.define(version: 1) do
     t.timestamps
   end
 
-  create_table :feeder_feeds, force: true do |t|
+  create_table :feedkit_feeds, force: true do |t|
     t.string :owner_type
     t.bigint :owner_id
     t.string :feed_type, null: false
@@ -15,7 +15,7 @@ ActiveRecord::Schema.define(version: 1) do
     t.timestamps
   end
 
-  add_index :feeder_feeds, :created_at
-  add_index :feeder_feeds, %i[owner_type owner_id feed_type created_at], name: "idx_feeder_feeds_lookup"
-  add_index :feeder_feeds, %i[owner_type owner_id feed_type period_name], name: "idx_feeder_feeds_dedup"
+  add_index :feedkit_feeds, :created_at
+  add_index :feedkit_feeds, %i[owner_type owner_id feed_type created_at], name: "idx_feedkit_feeds_lookup"
+  add_index :feedkit_feeds, %i[owner_type owner_id feed_type period_name], name: "idx_feedkit_feeds_dedup"
 end

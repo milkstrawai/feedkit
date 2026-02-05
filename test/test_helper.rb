@@ -4,7 +4,7 @@ require "simplecov"
 
 SimpleCov.start do
   add_filter "/test/"
-  add_group "Core", "lib/feeder"
+  add_group "Core", "lib/feedkit"
   add_group "Generators", "lib/generators"
   add_group "Models", "app/models"
   add_group "Jobs", "app/jobs"
@@ -29,7 +29,7 @@ module ActiveSupport
   class TestCase
     # Reset eager load state after each test
     teardown do
-      Feeder.reset_eager_load!
+      Feedkit.reset_eager_load!
     end
   end
 end

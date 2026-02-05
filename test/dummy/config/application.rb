@@ -9,7 +9,7 @@ require "active_job/railtie"
 require "action_controller/railtie"
 
 Bundler.require(*Rails.groups)
-require "feeder"
+require "feedkit"
 
 module Dummy
   class Application < Rails::Application

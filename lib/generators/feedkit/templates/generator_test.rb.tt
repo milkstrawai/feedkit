@@ -1,0 +1,38 @@
+# frozen_string_literal: true
+
+require 'test_helper'
+
+class <%= class_name %>Test < ActiveSupport::TestCase
+<% if owner? -%>
+  # setup do
+  #   @owner = <%= owner_class.underscore.pluralize %>(:one)
+  # end
+
+<% end -%>
+  test 'owner_class returns the configured owner type' do
+<% if owner? -%>
+    assert_equal <%= owner_class %>, <%= class_name %>.owner_class
+<% else -%>
+    assert_nil <%= class_name %>.owner_class
+<% end -%>
+  end
+
+  test 'feed_type returns underscored class name' do
+    assert_equal :<%= file_name %>, <%= class_name %>.feed_type
+  end
+
+  # test 'call creates a feed with expected data' do
+<% if owner? -%>
+  #   generator = <%= class_name %>.new(@owner, period_name: :daily)
+<% else -%>
+  #   generator = <%= class_name %>.new(nil)
+<% end -%>
+  #
+  #   assert_difference 'Feedkit::Feed.count', 1 do
+  #     generator.call
+  #   end
+  #
+  #   feed = Feedkit::Feed.last
+  #   assert_equal '<%= file_name %>', feed.feed_type
+  # end
+end
