@@ -21,8 +21,14 @@ module Feedkit
         @owner_class
       end
 
-      def feed_type
-        name.demodulize.underscore.to_sym
+      def feed_type(value = nil)
+        @feed_type = value.to_sym if value
+
+        @feed_type || default_feed_type
+      end
+
+      def default_feed_type
+        name.underscore.tr("/", "_").to_sym
       end
 
       def scheduled?

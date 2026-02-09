@@ -82,7 +82,15 @@ module Feedkit
     end
 
     test "feed_type returns underscored class name" do
-      assert_equal :test_generator, TestGenerator.feed_type
+      assert_equal :feedkit_generator_test_test_generator, TestGenerator.feed_type
+    end
+
+    test "feed_type can be overridden per generator class" do
+      TestGenerator.feed_type(:custom_type)
+
+      assert_equal :custom_type, TestGenerator.feed_type
+    ensure
+      TestGenerator.instance_variable_set(:@feed_type, nil)
     end
 
     test "scheduled? returns true when schedules are defined" do
@@ -141,7 +149,7 @@ module Feedkit
       feed = Feedkit::Feed.last
 
       assert_equal @organization, feed.owner
-      assert_equal "test_generator", feed.feed_type
+      assert_equal "feedkit_generator_test_test_generator", feed.feed_type
       assert_equal "d1_h6", feed.period_name
       assert_equal({ "test" => "data" }, feed.data)
     end
@@ -238,7 +246,7 @@ module Feedkit
       feed = Feedkit::Feed.last
 
       assert_nil feed.owner
-      assert_equal "ownerless_generator", feed.feed_type
+      assert_equal "feedkit_generator_test_ownerless_generator", feed.feed_type
       assert_equal({ "ownerless" => true }, feed.data)
     end
 

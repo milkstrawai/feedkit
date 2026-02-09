@@ -39,7 +39,7 @@ module Feedkit
       feed = Feedkit::Feed.last
 
       assert_equal @organization, feed.owner
-      assert_equal "test_generator", feed.feed_type
+      assert_equal "feedkit_generate_feed_job_test_test_generator", feed.feed_type
       assert_equal "weekly", feed.period_name
     end
 
