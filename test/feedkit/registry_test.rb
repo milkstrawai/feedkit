@@ -7,7 +7,7 @@ module Feedkit
     class ScheduledGenerator < Feedkit::Generator
       owned_by Organization
 
-      schedule every: 1.week, at: { hour: 7, weekday: :monday }, as: :weekly
+      every :week, at: { hour: 7, weekday: :monday }, as: :weekly
 
       private
 
@@ -35,7 +35,7 @@ module Feedkit
     end
 
     class ScheduledOwnerlessGenerator < Feedkit::Generator
-      schedule every: 1.week, at: { hour: 7, weekday: :monday }, as: :weekly
+      every :week, at: { hour: 7, weekday: :monday }, as: :weekly
 
       private
 
@@ -50,6 +50,10 @@ module Feedkit
       Feedkit::Registry.register(UnscheduledGenerator)
       Feedkit::Registry.register(OwnerlessGenerator)
       Feedkit::Registry.register(ScheduledOwnerlessGenerator)
+    end
+
+    teardown do
+      Feedkit::Registry.clear!
     end
 
     test "generators returns all registered generators" do

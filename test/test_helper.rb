@@ -10,7 +10,7 @@ SimpleCov.start do
   add_group "Jobs", "app/jobs"
 
   enable_coverage :branch
-  minimum_coverage line: 100, branch: 90
+  minimum_coverage line: 100, branch: 95
 end
 
 ENV["RAILS_ENV"] = "test"

@@ -7,7 +7,7 @@ module Feedkit
     class TestGenerator < Feedkit::Generator
       owned_by Organization
 
-      schedule every: 1.day, at: { hour: 6 }
+      every :day, at: { hour: 6 }
 
       private
 
@@ -19,7 +19,7 @@ module Feedkit
     class NilDataGenerator < Feedkit::Generator
       owned_by Organization
 
-      schedule every: 1.day, at: { hour: 6 }
+      every :day, at: { hour: 6 }
 
       private
 
@@ -50,6 +50,7 @@ module Feedkit
     end
 
     setup do
+      @registry_snapshot = Feedkit::Registry.generators.dup
       @organization = Organization.create!(name: "Test Org")
       # Ensure our test generators are registered
       Feedkit::Registry.register(TestGenerator)
@@ -61,6 +62,10 @@ module Feedkit
     teardown do
       Feedkit::Feed.delete_all
       Organization.delete_all
+
+      # Avoid leaking test generator classes into other tests via the global registry.
+      Feedkit::Registry.clear!
+      @registry_snapshot.each { |klass| Feedkit::Registry.register(klass) }
     end
 
     # Class methods
@@ -163,6 +168,36 @@ module Feedkit
       end
     end
 
+    test "deduplication uses schedule boundaries (not a sliding window)" do
+      travel_to(Time.zone.parse("2024-10-15 06:30:00")) do
+        TestGenerator.new(@organization, period_name: :d1_h6).call
+      end
+
+      travel_to(Time.zone.parse("2024-10-16 06:00:00")) do
+        assert_difference "Feedkit::Feed.count", 1 do
+          TestGenerator.new(@organization, period_name: :d1_h6).call
+        end
+      end
+    end
+
+    test "stores period_start_at at the schedule boundary" do
+      travel_to(Time.zone.parse("2024-10-15 06:30:00")) do
+        TestGenerator.new(@organization, period_name: :d1_h6).call
+      end
+
+      feed = Feedkit::Feed.last
+
+      assert_equal Time.zone.parse("2024-10-15 06:00:00"), feed.period_start_at
+    end
+
+    test "call respects an explicit run_at timestamp" do
+      run_at = Time.zone.parse("2024-10-15 06:30:00")
+
+      TestGenerator.new(@organization, period_name: :d1_h6).call(run_at: run_at)
+
+      assert_equal Time.zone.parse("2024-10-15 06:00:00"), Feedkit::Feed.last.period_start_at
+    end
+
     test "call creates feed in new period" do
       generator = TestGenerator.new(@organization, period_name: :d1_h6)
 
@@ -184,6 +219,12 @@ module Feedkit
         generator.call
         TestGenerator.new(@organization).call
       end
+    end
+
+    test "ad-hoc call does not set period_start_at" do
+      TestGenerator.new(@organization).call
+
+      assert_nil Feedkit::Feed.last.period_start_at
     end
 
     # Ownerless generator
@@ -218,7 +259,7 @@ module Feedkit
     test "period returns schedule period with schedule" do
       generator = TestGenerator.new(@organization, period_name: :d1_h6)
 
-      assert_equal 1.day, generator.send(:period)
+      assert_equal :day, generator.send(:period)
     end
 
     test "base generator raises NotImplementedError for #data" do
@@ -235,6 +276,22 @@ module Feedkit
 
       assert_difference "Feedkit::Feed.count", 1 do
         generator.call
+      end
+    end
+
+    test "scheduled generator treats RecordNotUnique as a normal dedup skip" do
+      generator = TestGenerator.new(@organization, period_name: :d1_h6)
+      period_start = Time.zone.parse("2024-10-15 06:00:00")
+
+      fake_scope = Object.new
+      def fake_scope.create!(*)
+        raise ActiveRecord::RecordNotUnique, "duplicate"
+      end
+
+      generator.stubs(:feed_scope).returns(fake_scope)
+
+      assert_nothing_raised do
+        generator.send(:create_feed!, { test: "data" }, period_start)
       end
     end
   end

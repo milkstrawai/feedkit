@@ -11,13 +11,21 @@ module Feedkit
         @schedules ||= []
       end
 
-      def schedule(every:, at:, as: nil, superseded_by: [])
-        schedules << Feedkit::Schedule.new(every: every, at: at, as: as, superseded_by: superseded_by)
+      def every(period, at:, as: nil, superseded_by: [])
+        schedule = Feedkit::Schedule.new(period:, at:, as:, superseded_by:)
+
+        if schedules.any? { |s| s.period_name == schedule.period_name }
+          raise ArgumentError,
+                "Duplicate schedule name '#{schedule.period_name}' for #{name || self}. " \
+                "Schedule names must be unique per generator."
+        end
+
+        schedules << schedule
       end
 
       def schedules_due(time = Time.current)
         due = schedules.select { |s| s.due?(time) }
-        due_names = due.map(&:period_name)
+        due_names = due.to_set(&:period_name)
         due.reject { |s| s.superseded_by.any? { |name| due_names.include?(name) } }
       end
 

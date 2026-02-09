@@ -7,9 +7,9 @@ module Feedkit
     class TestGenerator
       include Feedkit::Schedulable
 
-      schedule every: 1.day, at: { hour: 6 }, as: :daily, superseded_by: %i[weekly monthly]
-      schedule every: 1.week, at: { hour: 6, weekday: 1 }, as: :weekly, superseded_by: :monthly
-      schedule every: 1.month, at: { hour: 6, day: 1 }, as: :monthly
+      every :day, at: { hour: 6 }, as: :daily, superseded_by: %i[weekly monthly]
+      every :week, at: { hour: 6, weekday: 1 }, as: :weekly, superseded_by: :monthly
+      every :month, at: { hour: 6, day: 1 }, as: :monthly
     end
 
     test "schedules_due returns only daily on regular Tuesday" do
@@ -52,6 +52,20 @@ module Feedkit
       schedule = TestGenerator.find_schedule(:daily)
 
       assert_equal "daily", schedule.period_name
+    end
+
+    test "every raises when schedule names are duplicated" do
+      klass = Class.new do
+        include Feedkit::Schedulable
+      end
+
+      klass.every :day, at: { hour: 6 }, as: :daily
+
+      error = assert_raises(ArgumentError) do
+        klass.every :week, at: { hour: 6, weekday: :monday }, as: :daily
+      end
+
+      assert_match(/Duplicate schedule name 'daily'/, error.message)
     end
   end
 end

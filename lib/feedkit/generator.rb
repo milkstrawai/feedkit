@@ -38,11 +38,12 @@ module Feedkit
       raise ArgumentError, "Unknown schedule: #{period_name}" if period_name && !@schedule
     end
 
-    def call
-      return if already_generated?
+    def call(run_at: Time.current)
+      period_start = period_start_at(run_at)
+      return if already_generated?(period_start)
       return unless (payload = data)
 
-      create_feed!(payload)
+      create_feed!(payload, period_start)
     end
 
     private
@@ -61,20 +62,31 @@ module Feedkit
       @schedule&.period_name
     end
 
-    def already_generated?
+    def period_start_at(run_at)
+      @schedule&.period_start_at(run_at)
+    end
+
+    def already_generated?(period_start)
       return false unless @schedule
       return false unless @owner
 
-      feed_scope.where(feed_type: self.class.feed_type, period_name: period_name)
-                .exists?(["created_at > ?", period.ago])
+      feed_scope.where(feed_type: self.class.feed_type, period_name:)
+                .exists?(period_start_at: period_start)
     end
 
-    def create_feed!(payload)
+    def create_feed!(payload, period_start)
+      attrs = { feed_type: self.class.feed_type, period_name:, data: payload }
+      attrs[:period_start_at] = period_start if @schedule
+
       if @owner
-        feed_scope.create!(feed_type: self.class.feed_type, period_name: period_name, data: payload)
+        feed_scope.create!(attrs)
       else
-        Feedkit::Feed.create!(feed_type: self.class.feed_type, period_name: period_name, data: payload)
+        Feedkit::Feed.create!(attrs)
       end
+    rescue ActiveRecord::RecordNotUnique
+      # Concurrency-safe dedup: another worker created this feed for the same
+      # (owner, feed_type, period_name, period_start_at) after our check.
+      nil
     end
 
     def feed_scope

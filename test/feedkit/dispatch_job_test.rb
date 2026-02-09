@@ -7,7 +7,7 @@ module Feedkit
     class WeeklyGenerator < Feedkit::Generator
       owned_by Organization
 
-      schedule every: 1.week, at: { hour: 7, weekday: :monday }, as: :weekly
+      every :week, at: { hour: 7, weekday: :monday }, as: :weekly
 
       private
 
@@ -48,7 +48,8 @@ module Feedkit
             owner_id: @organization.id,
             owner_class: "Organization",
             generator_class: "Feedkit::DispatchJobTest::WeeklyGenerator",
-            period_name: "weekly"
+            period_name: "weekly",
+            scheduled_at: Time.current
           }]
         )
       end

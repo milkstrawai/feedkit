@@ -6,8 +6,8 @@ class <%= class_name %> < Feedkit::Generator
 
 <% end -%>
   # Define schedules for automatic feed generation
-  # schedule every: 1.day, at: { hour: 6 }, as: :daily
-  # schedule every: 1.week, at: { hour: 7, weekday: :monday }, as: :weekly
+  # every :day, at: { hour: 6 }, as: :daily, superseded_by: :weekly
+  # every :week, at: { hour: 7, weekday: :monday }, as: :weekly
 
   private
 

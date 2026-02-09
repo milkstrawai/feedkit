@@ -7,7 +7,7 @@ module Feedkit
     class TestGenerator < Feedkit::Generator
       owned_by Organization
 
-      schedule every: 1.week, at: { hour: 7, weekday: :monday }, as: :weekly
+      every :week, at: { hour: 7, weekday: :monday }, as: :weekly
 
       private
 
@@ -31,7 +31,8 @@ module Feedkit
           owner_id: @organization.id,
           owner_class: "Organization",
           generator_class: "Feedkit::GenerateFeedJobTest::TestGenerator",
-          period_name: "weekly"
+          period_name: "weekly",
+          scheduled_at: Time.zone.parse("2024-10-14 07:00:00")
         )
       end
 
@@ -48,7 +49,8 @@ module Feedkit
           owner_id: -1,
           owner_class: "Organization",
           generator_class: "Feedkit::GenerateFeedJobTest::TestGenerator",
-          period_name: "weekly"
+          period_name: "weekly",
+          scheduled_at: Time.zone.parse("2024-10-14 07:00:00")
         )
       end
     end
@@ -61,7 +63,8 @@ module Feedkit
           owner_id: @organization.id,
           owner_class: "Organization",
           generator_class: "Feedkit::GenerateFeedJobTest::TestGenerator",
-          period_name: "weekly"
+          period_name: "weekly",
+          scheduled_at: Time.zone.parse("2024-10-14 07:00:00")
         )
       end
     end
