@@ -7,7 +7,7 @@ Feedkit.configure do |config|
   # Association name for the feeds relationship (default: :feeds)
   # config.association_name = :feeds
 
-  # Paths to search for generator classes (default: ['app/generators/**/*.rb'])
+  # Glob paths to load generator classes in development (default: ['app/generators/**/*.rb'])
   # config.generator_paths = ['app/generators/**/*.rb']
 
   # Primary key type for owner_id (default: :bigint)

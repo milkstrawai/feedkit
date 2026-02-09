@@ -43,7 +43,7 @@ module Feedkit
 
         dispatchable_generators.flat_map do |generator|
           generator.schedules_due(time).map do |schedule|
-            { generator: generator, period_name: schedule.period_name }
+            { generator:, period_name: schedule.period_name }
           end
         end
       end

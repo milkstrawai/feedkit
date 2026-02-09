@@ -1,5 +1,23 @@
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-09
+
+### Added
+
+- `:year` schedules with `month:` and `day:` conditions
+
+### Changed
+
+- Schedule periods are now symbolic (`:hour`, `:day`, `:week`, `:month`, `:year`) instead of arbitrary `ActiveSupport::Duration` values
+- Schedule matching, naming, validation, and period boundary calculations were refactored into focused modules
+- Deduplication uses schedule boundaries (`period_start_at`) rather than sliding time windows
+- `week:` condition now supports ISO week parity only (`:odd`/`:even`)
+
+### Fixed
+
+- Handle DST transitions when calculating `period_start_at` (skip ambiguous/non-existent local ticks)
+- Documentation clarifications around weekday integers (`wday`), multi-tick schedules (ranges/arrays), and when deduplication applies
+
 ## [0.1.0] - 2026-02-05
 
 ### Added

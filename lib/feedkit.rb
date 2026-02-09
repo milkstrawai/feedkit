@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "active_support"
+require "active_support/time"
 
 require_relative "feedkit/version"
 require_relative "feedkit/configuration"
