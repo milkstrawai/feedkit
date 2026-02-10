@@ -26,8 +26,7 @@ module Feedkit
         candidate = find_windowed_candidate
         return candidate if candidate
 
-        raise ArgumentError,
-              "No schedule occurrence found for #{schedule.period.inspect} / #{schedule.conditions.inspect}"
+        raise ArgumentError, "No schedule occurrence found for #{unit.inspect} / #{schedule.conditions.inspect}"
       end
 
       private
