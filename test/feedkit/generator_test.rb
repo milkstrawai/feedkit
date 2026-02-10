@@ -257,7 +257,6 @@ module Feedkit
       end
     end
 
-    # Private method coverage
     test "period returns nil without schedule" do
       generator = TestGenerator.new(@organization)
 
@@ -289,18 +288,10 @@ module Feedkit
 
     test "scheduled generator treats RecordNotUnique as a normal dedup skip" do
       generator = TestGenerator.new(@organization, period_name: :d1_h6)
-      period_start = Time.zone.parse("2024-10-15 06:00:00")
 
-      fake_scope = Object.new
-      def fake_scope.create!(*)
-        raise ActiveRecord::RecordNotUnique, "duplicate"
-      end
+      @organization.feeds.stubs(:create!).raises(ActiveRecord::RecordNotUnique, "duplicate")
 
-      generator.stubs(:feed_scope).returns(fake_scope)
-
-      assert_nothing_raised do
-        generator.send(:create_feed!, { test: "data" }, period_start)
-      end
+      assert_nothing_raised { generator.call }
     end
   end
 end

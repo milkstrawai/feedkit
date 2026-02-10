@@ -66,11 +66,42 @@ module Feedkit
       assert_equal Rails.logger, Feedkit.logger
     end
 
+    test "Feedkit.eager_load_generators! loads files from generator_paths" do
+      Feedkit.reset_eager_load!
+
+      # Point generator_paths at a known fixture file
+      original_paths = Feedkit.configuration.generator_paths
+      fixture = File.expand_path("../fixtures/generators/**/*.rb", __dir__)
+      Feedkit.configuration.generator_paths = [fixture]
+
+      Feedkit.eager_load_generators!
+
+      assert defined?(FixtureGenerator), "Expected FixtureGenerator to be defined after eager loading"
+    ensure
+      Feedkit.configuration.generator_paths = original_paths
+      Feedkit.reset_eager_load!
+    end
+
     test "Feedkit.eager_load_generators! skips when already loaded" do
       Feedkit.eager_load_generators!
 
       # Second call should be a no-op (returns early due to @generators_loaded)
       assert_nothing_raised { Feedkit.eager_load_generators! }
+    end
+
+    test "Feedkit.eager_load_generators! skips when Rails eager_load is true" do
+      Feedkit.reset_eager_load!
+
+      original = Rails.application.config.eager_load
+      Rails.application.config.eager_load = true
+
+      # Should return early without loading anything
+      Feedkit.eager_load_generators!
+
+      assert_not Feedkit.instance_variable_get(:@generators_loaded)
+    ensure
+      Rails.application.config.eager_load = original
+      Feedkit.reset_eager_load!
     end
   end
 end

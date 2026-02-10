@@ -96,10 +96,10 @@ module Feedkit
       assert_equal numeric.period_name, symbolic.period_name
     end
 
-    test "private helpers: canonicalize_array_value_for_name falls back for unknown types" do
+    test "canonicalize_array_value_for_name returns values as-is for types without a canonicalizer" do
       schedule = Dummy.new(period: :day, at: { hour: 6 })
 
-      assert_equal [2, 1], schedule.send(:canonicalize_array_value_for_name, :unknown, [2, 1])
+      assert_equal [2, 1], schedule.send(:canonicalize_array_value_for_name, :week, [2, 1])
     end
   end
 end

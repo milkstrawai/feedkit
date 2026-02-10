@@ -13,6 +13,8 @@ module Feedkit
     class PeriodStartCalculator # rubocop:disable Metrics/ClassLength
       include Feedkit::Schedule::Normalization
 
+      # Safety limit to prevent infinite iteration. 600 weeks ≈ 11.5 years,
+      # far beyond any realistic schedule lookback.
       MAX_WINDOWS = 600
 
       def initialize(schedule:, time:)
@@ -124,29 +126,21 @@ module Feedkit
 
       def candidate_hours
         value = schedule.effective_conditions[:hour]
-        return [0] unless value
-
         Array(value.is_a?(Range) ? value.to_a : value).map(&:to_i).uniq.sort
       end
 
       def candidate_weekdays
         value = schedule.effective_conditions[:weekday]
-        return [WEEKDAYS.fetch(:monday)] unless value
-
         normalize_weekday_value_list(value).uniq.sort
       end
 
       def candidate_days_in_month(time)
         value = schedule.effective_conditions[:day]
-        return [1] unless value
-
         normalize_day_value_list(value, time).uniq.sort
       end
 
       def candidate_months
         value = schedule.effective_conditions[:month]
-        return [MONTHS.fetch(:january)] unless value
-
         normalize_month_value_list(value).uniq.sort
       end
 

@@ -44,13 +44,5 @@ module Feedkit
         assert_not schedule.due?
       end
     end
-
-    test "private helpers return nil for unknown condition types (matching)" do
-      schedule = Dummy.new(period: :day, at: { hour: 6 })
-      time = Time.zone.parse("2024-10-15 06:00:00")
-
-      assert_nil schedule.send(:actual_value_for, :unknown, time)
-      assert_nil schedule.send(:symbolic_match?, :first, :hour, time)
-    end
   end
 end

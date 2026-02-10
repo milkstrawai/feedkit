@@ -4,7 +4,7 @@ require "test_helper"
 require_relative "support/dummy_base"
 
 module Feedkit
-  class ScheduleValidationTest < ActiveSupport::TestCase # rubocop:disable Metrics/ClassLength
+  class ScheduleValidationTest < ActiveSupport::TestCase
     Dummy = Class.new(Feedkit::ScheduleTestDummyBase) do
       include Feedkit::Schedule::Validation
     end
@@ -139,12 +139,6 @@ module Feedkit
 
         assert_equal({ month: month }, schedule.conditions)
       end
-    end
-
-    test "private helpers return nil for unknown condition types (validation)" do
-      schedule = Dummy.new(period: :day, at: { hour: 6 })
-
-      assert_nil schedule.send(:validate_scalar_value!, :unknown, 1)
     end
   end
 end

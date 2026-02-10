@@ -238,41 +238,5 @@ module Feedkit
 
       assert_empty calculator.send(:tick_candidates_for_date, window_start, Object.new, Date.new(2024, 10, 15))
     end
-
-    test "candidate_hours defaults to midnight when effective hour is missing" do
-      schedule = DummyScheduleForPeriodStartCalculator.new(period: :hour, at: {})
-      time = Time.zone.parse("2024-10-15 06:30:00")
-
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:)
-
-      assert_equal [0], calculator.send(:candidate_hours)
-    end
-
-    test "candidate_weekdays defaults to Monday when effective weekday is missing" do
-      schedule = DummyScheduleForPeriodStartCalculator.new(period: :day, at: { hour: 6 })
-      time = Time.zone.parse("2024-10-15 06:30:00")
-
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:)
-
-      assert_equal [1], calculator.send(:candidate_weekdays)
-    end
-
-    test "candidate_months defaults to January when effective month is missing" do
-      schedule = DummyScheduleForPeriodStartCalculator.new(period: :day, at: { hour: 6 })
-      time = Time.zone.parse("2024-10-15 06:30:00")
-
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:)
-
-      assert_equal [1], calculator.send(:candidate_months)
-    end
-
-    test "candidate_days_in_month defaults to day 1 when effective day is missing" do
-      schedule = DummyScheduleForPeriodStartCalculator.new(period: :day, at: { hour: 6 })
-      time = Time.zone.parse("2024-10-15 06:30:00")
-
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:)
-
-      assert_equal [1], calculator.send(:candidate_days_in_month, time)
-    end
   end
 end
