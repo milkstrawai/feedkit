@@ -44,18 +44,13 @@ module Feedkit
           window_start, window_end = window_bounds(cursor)
           upper_bound = time < window_end ? time : window_end - 1.second
 
-          candidate = latest_candidate_in_window(window_start, window_end, upper_bound)
+          candidate = tick_candidates_for_window(window_start, window_end).reverse_each.find { |t| t <= upper_bound }
           return candidate if candidate
 
           cursor = window_start - 1.second
         end
 
         nil
-      end
-
-      def latest_candidate_in_window(window_start, window_end, upper_bound)
-        candidates = tick_candidates_for_window(window_start, window_end)
-        candidates.reverse_each.find { |t| t <= upper_bound }
       end
 
       def tick_candidates_for_window(window_start, window_end)
@@ -94,13 +89,7 @@ module Feedkit
         value = schedule.effective_conditions[:hour]
         return [0] unless value
 
-        hours = case value
-                when Range then value.to_a
-                when Array then value
-                else [value]
-                end
-
-        hours.map(&:to_i).uniq.sort
+        Array(value.is_a?(Range) ? value.to_a : value).map(&:to_i).uniq.sort
       end
 
       def candidate_dates_for_window(window_start)
@@ -122,17 +111,15 @@ module Feedkit
       end
 
       def candidate_month_dates(window_start)
-        month_time = window_start
-        candidate_days_in_month(month_time).filter_map do |day|
-          safe_date(month_time.year, month_time.month, day)
+        candidate_days_in_month(window_start).filter_map do |day|
+          safe_date(window_start.year, window_start.month, day)
         end.uniq.sort
       end
 
       def candidate_year_dates(window_start)
-        year = window_start.year
         candidate_months.flat_map do |month|
           month_time = window_start.change(month:, day: 1)
-          candidate_days_in_month(month_time).filter_map { |day| safe_date(year, month, day) }
+          candidate_days_in_month(month_time).filter_map { |day| safe_date(window_start.year, month, day) }
         end.uniq.sort
       end
 
