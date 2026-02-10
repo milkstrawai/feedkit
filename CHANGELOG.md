@@ -1,8 +1,11 @@
 ## [Unreleased]
 
+## [0.3.0] - 2026-02-10
+
 ### Changed
 
 - **Breaking:** Weekday numbering switched from Ruby `wday` (0=Sunday..6=Saturday) to ISO `cwday` (1=Monday..7=Sunday)
+- Simplified `PeriodStartCalculator`: removed `unit` parameter, unified `window_bounds`, and inlined single-use helpers
 
 ## [0.2.0] - 2026-02-09
 
