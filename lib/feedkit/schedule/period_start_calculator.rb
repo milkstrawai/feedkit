@@ -53,9 +53,46 @@ module Feedkit
         nil
       end
 
+      def window_bounds(cursor_time)
+        args = unit == :week ? [:monday] : []
+        start_time = cursor_time.public_send(:"beginning_of_#{unit}", *args)
+        [start_time, start_time + 1.public_send(unit)]
+      end
+
       def tick_candidates_for_window(window_start, window_end)
         dates = candidate_dates_for_window(window_start)
         dates.flat_map { |date| tick_candidates_for_date(window_start, window_end, date) }.sort
+      end
+
+      def candidate_dates_for_window(window_start)
+        case unit
+        when :day   then candidate_day_dates(window_start)
+        when :week  then candidate_week_dates(window_start)
+        when :month then candidate_month_dates(window_start)
+        when :year  then candidate_year_dates(window_start)
+        end
+      end
+
+      def candidate_day_dates(window_start)
+        [window_start.to_date]
+      end
+
+      def candidate_week_dates(window_start)
+        week_start = window_start.to_date # Monday (ISO week start)
+        candidate_weekdays.map { |wday| week_start + ((wday - 1) % 7) }.uniq.sort
+      end
+
+      def candidate_month_dates(window_start)
+        candidate_days_in_month(window_start).filter_map do |day|
+          safe_date(window_start.year, window_start.month, day)
+        end.uniq.sort
+      end
+
+      def candidate_year_dates(window_start)
+        candidate_months.flat_map do |month|
+          month_time = window_start.change(month:, day: 1)
+          candidate_days_in_month(month_time).filter_map { |day| safe_date(window_start.year, month, day) }
+        end.uniq.sort
       end
 
       def tick_candidates_for_date(window_start, window_end, date)
@@ -92,55 +129,11 @@ module Feedkit
         Array(value.is_a?(Range) ? value.to_a : value).map(&:to_i).uniq.sort
       end
 
-      def candidate_dates_for_window(window_start)
-        case unit
-        when :day   then candidate_day_dates(window_start)
-        when :week  then candidate_week_dates(window_start)
-        when :month then candidate_month_dates(window_start)
-        when :year  then candidate_year_dates(window_start)
-        end
-      end
-
-      def candidate_day_dates(window_start)
-        [window_start.to_date]
-      end
-
-      def candidate_week_dates(window_start)
-        week_start = window_start.to_date # Monday (ISO week start)
-        candidate_weekdays.map { |wday| week_start + weekday_offset_from_monday(wday) }.uniq.sort
-      end
-
-      def candidate_month_dates(window_start)
-        candidate_days_in_month(window_start).filter_map do |day|
-          safe_date(window_start.year, window_start.month, day)
-        end.uniq.sort
-      end
-
-      def candidate_year_dates(window_start)
-        candidate_months.flat_map do |month|
-          month_time = window_start.change(month:, day: 1)
-          candidate_days_in_month(month_time).filter_map { |day| safe_date(window_start.year, month, day) }
-        end.uniq.sort
-      end
-
-      def safe_date(year, month, day)
-        Date.new(year, month, day)
-      rescue Date::Error
-        nil
-      end
-
       def candidate_weekdays
         value = schedule.effective_conditions[:weekday]
         return [WEEKDAYS.fetch(:monday)] unless value
 
         normalize_weekday_value_list(value).uniq.sort
-      end
-
-      def candidate_months
-        value = schedule.effective_conditions[:month]
-        return [MONTHS.fetch(:january)] unless value
-
-        normalize_month_value_list(value).uniq.sort
       end
 
       def candidate_days_in_month(time)
@@ -150,14 +143,17 @@ module Feedkit
         normalize_day_value_list(value, time).uniq.sort
       end
 
-      def weekday_offset_from_monday(wday)
-        (wday.to_i - 1) % 7
+      def candidate_months
+        value = schedule.effective_conditions[:month]
+        return [MONTHS.fetch(:january)] unless value
+
+        normalize_month_value_list(value).uniq.sort
       end
 
-      def window_bounds(cursor_time)
-        args = unit == :week ? [:monday] : []
-        start_time = cursor_time.public_send(:"beginning_of_#{unit}", *args)
-        [start_time, start_time + 1.public_send(unit)]
+      def safe_date(year, month, day)
+        Date.new(year, month, day)
+      rescue Date::Error
+        nil
       end
     end
   end
