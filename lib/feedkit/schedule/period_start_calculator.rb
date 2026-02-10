@@ -169,32 +169,9 @@ module Feedkit
       end
 
       def window_bounds(cursor_time)
-        case unit
-        when :day   then day_window_bounds(cursor_time)
-        when :week  then week_window_bounds(cursor_time)
-        when :month then month_window_bounds(cursor_time)
-        when :year  then year_window_bounds(cursor_time)
-        end
-      end
-
-      def day_window_bounds(cursor_time)
-        start_time = cursor_time.beginning_of_day
-        [start_time, start_time + 1.day]
-      end
-
-      def week_window_bounds(cursor_time)
-        start_time = cursor_time.beginning_of_week(:monday)
-        [start_time, start_time + 1.week]
-      end
-
-      def month_window_bounds(cursor_time)
-        start_time = cursor_time.beginning_of_month
-        [start_time, start_time + 1.month]
-      end
-
-      def year_window_bounds(cursor_time)
-        start_time = cursor_time.beginning_of_year
-        [start_time, start_time + 1.year]
+        args = unit == :week ? [:monday] : []
+        start_time = cursor_time.public_send(:"beginning_of_#{unit}", *args)
+        [start_time, start_time + 1.public_send(unit)]
       end
     end
   end
