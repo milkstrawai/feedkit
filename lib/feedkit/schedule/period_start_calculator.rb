@@ -183,15 +183,7 @@ module Feedkit
       end
 
       def week_window_bounds(cursor_time)
-        start_date = iso_week_start_date(cursor_time.to_date)
-        start_time = cursor_time.change(
-          year: start_date.year,
-          month: start_date.month,
-          day: start_date.day,
-          hour: 0,
-          min: 0,
-          sec: 0
-        )
+        start_time = cursor_time.beginning_of_week(:monday)
         [start_time, start_time + 1.week]
       end
 
@@ -203,10 +195,6 @@ module Feedkit
       def year_window_bounds(cursor_time)
         start_time = cursor_time.beginning_of_year
         [start_time, start_time + 1.year]
-      end
-
-      def iso_week_start_date(date)
-        date - (date.cwday - 1)
       end
     end
   end
