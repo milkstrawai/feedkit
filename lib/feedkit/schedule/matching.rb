@@ -16,7 +16,7 @@ module Feedkit
         case type
         when :hour    then time.hour
         when :day     then time.day
-        when :weekday then time.wday
+        when :weekday then time.to_date.cwday
         when :week    then time.to_date.cweek
         when :month   then time.month
         end

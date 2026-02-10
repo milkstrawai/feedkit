@@ -79,7 +79,7 @@ module Feedkit
 
       def candidate_week_dates(window_start)
         week_start = window_start.to_date # Monday (ISO week start)
-        candidate_weekdays.map { |wday| week_start + ((wday - 1) % 7) }.uniq.sort
+        candidate_weekdays.map { |wday| week_start + (wday - 1) }.uniq.sort
       end
 
       def candidate_month_dates(window_start)
@@ -150,6 +150,7 @@ module Feedkit
         normalize_month_value_list(value).uniq.sort
       end
 
+      # Returns nil for invalid dates like Feb 30 instead of raising.
       def safe_date(year, month, day)
         Date.new(year, month, day)
       rescue Date::Error

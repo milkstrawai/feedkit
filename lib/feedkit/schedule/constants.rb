@@ -8,20 +8,20 @@ module Feedkit
 
     VALID_HOUR_RANGE = (0..23)
     VALID_DAY_RANGE = (1..31)
-    VALID_WEEKDAY_RANGE = (0..6)
+    VALID_WEEKDAY_RANGE = (1..7)
     VALID_MONTH_RANGE = (1..12)
 
     SYMBOLIC_DAY_VALUES = %i[first last].freeze
     SYMBOLIC_WEEK_VALUES = %i[odd even].freeze
 
     WEEKDAYS = {
-      sunday: 0,
       monday: 1,
       tuesday: 2,
       wednesday: 3,
       thursday: 4,
       friday: 5,
-      saturday: 6
+      saturday: 6,
+      sunday: 7
     }.freeze
 
     MONTHS = {

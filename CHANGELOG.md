@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** Weekday numbering switched from Ruby `wday` (0=Sunday..6=Saturday) to ISO `cwday` (1=Monday..7=Sunday)
+
 ## [0.2.0] - 2026-02-09
 
 ### Added

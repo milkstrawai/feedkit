@@ -253,7 +253,7 @@ Conditions are AND-ed together. All must match for the schedule to fire.
 |-----------|--------|---------|
 | `hour:` | `0..23` | `hour: 6`, `hour: [6, 12, 18]`, `hour: 9..17` |
 | `day:` | `1..31`, `:first`, `:last` | `day: 1`, `day: :last`, `day: 1..15` |
-| `weekday:` | `0..6` (Ruby/Rails `wday`: `0` = Sunday), `:sunday`..`:saturday` | `weekday: :monday`, `weekday: :monday..:friday` |
+| `weekday:` | `1..7` (ISO: Monday = `1`, Sunday = `7`), `:monday`..`:sunday` | `weekday: :monday`, `weekday: :monday..:friday` |
 | `week:` | `:odd`, `:even` (ISO week parity, `Date#cweek`) | `week: :odd` |
 | `month:` | `1..12`, `:january`..`:december` | `month: :january`, `month: :january..:march` |
 

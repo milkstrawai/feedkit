@@ -51,10 +51,10 @@ module Feedkit
 
     test "raises ArgumentError for weekday out of range" do
       error = assert_raises(ArgumentError) do
-        Dummy.new(period: :week, at: { weekday: 7 })
+        Dummy.new(period: :week, at: { weekday: 0 })
       end
 
-      assert_match(/Invalid weekday value: 7/, error.message)
+      assert_match(/Invalid weekday value: 0/, error.message)
     end
 
     test "raises ArgumentError for month out of range" do

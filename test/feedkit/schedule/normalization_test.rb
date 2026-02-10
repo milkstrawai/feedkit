@@ -13,7 +13,7 @@ module Feedkit
       schedule = Dummy.new(period: :day, at: {})
 
       assert_equal 1, schedule.send(:normalize_weekday, :monday)
-      assert_equal 0, schedule.send(:normalize_weekday, :sunday)
+      assert_equal 7, schedule.send(:normalize_weekday, :sunday)
     end
 
     test "normalize_weekday preserves unknown symbols" do

@@ -70,7 +70,7 @@ module Feedkit
         return if value.is_a?(Integer) && VALID_WEEKDAY_RANGE.cover?(value)
 
         raise ArgumentError,
-              "Invalid weekday value: #{value}. Must be integer 0-6 or symbol (#{WEEKDAYS.keys.join(", ")})"
+              "Invalid weekday value: #{value}. Must be integer 1-7 or symbol (#{WEEKDAYS.keys.join(", ")})"
       end
 
       def validate_week_value!(value)
