@@ -37,7 +37,7 @@ module Feedkit
     # based on schedule boundaries rather than a sliding window (e.g. `1.day.ago`).
     def period_start_at(time = Time.current)
       time = normalize_time(time)
-      PeriodStartCalculator.new(schedule: self, time:, unit: period).call
+      PeriodStartCalculator.new(schedule: self, time:).call
     end
 
     def effective_conditions

@@ -199,31 +199,15 @@ module Feedkit
         DummyScheduleForPeriodStartCalculator.new(period: :day, at: { month: 2..1 }) # empty range, never matches
       time = Time.zone.parse("2024-10-15 12:00:00")
 
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:, unit: :day)
+      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:)
       assert_raises(ArgumentError) { calculator.call }
-    end
-
-    test "calculator rejects unknown units" do
-      schedule = DummyScheduleForPeriodStartCalculator.new(period: :day, at: { hour: 6 })
-      time = Time.zone.parse("2024-10-15 06:30:00")
-
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:, unit: :nope)
-      assert_raises(ArgumentError) { calculator.call }
-    end
-
-    test "candidate date generation rejects unknown units" do
-      schedule = DummyScheduleForPeriodStartCalculator.new(period: :day, at: { hour: 6 })
-      window_start = Time.zone.parse("2024-10-15 00:00:00")
-
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time: window_start, unit: :nope)
-      assert_raises(ArgumentError) { calculator.send(:candidate_dates_for_window, window_start) }
     end
 
     test "candidate date generation skips invalid dates (e.g. Feb 31) for yearly schedules" do
       schedule = DummyScheduleForPeriodStartCalculator.new(period: :year, at: { month: :february, day: 31 })
       window_start = Time.zone.parse("2024-01-01 00:00:00")
 
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time: window_start, unit: :year)
+      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time: window_start)
 
       assert_empty calculator.send(:candidate_dates_for_window, window_start)
     end
@@ -236,7 +220,7 @@ module Feedkit
       window_end = window_start + 1.day
       out_of_window_date = window_start.to_date + 1
 
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time: window_start, unit: :day)
+      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time: window_start)
 
       assert_empty calculator.send(:tick_candidates_for_date, window_start, window_end, out_of_window_date)
     end
@@ -245,7 +229,7 @@ module Feedkit
       schedule = DummyScheduleForPeriodStartCalculator.new(period: :day, at: { hour: 6 })
       time = Time.zone.parse("2024-10-15 06:30:00")
 
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:, unit: :day)
+      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:)
 
       window_start = Object.new
       def window_start.change(**)
@@ -259,7 +243,7 @@ module Feedkit
       schedule = DummyScheduleForPeriodStartCalculator.new(period: :hour, at: {})
       time = Time.zone.parse("2024-10-15 06:30:00")
 
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:, unit: :day)
+      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:)
 
       assert_equal [0], calculator.send(:candidate_hours)
     end
@@ -268,7 +252,7 @@ module Feedkit
       schedule = DummyScheduleForPeriodStartCalculator.new(period: :day, at: { hour: 6 })
       time = Time.zone.parse("2024-10-15 06:30:00")
 
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:, unit: :week)
+      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:)
 
       assert_equal [1], calculator.send(:candidate_weekdays)
     end
@@ -277,7 +261,7 @@ module Feedkit
       schedule = DummyScheduleForPeriodStartCalculator.new(period: :day, at: { hour: 6 })
       time = Time.zone.parse("2024-10-15 06:30:00")
 
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:, unit: :year)
+      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:)
 
       assert_equal [1], calculator.send(:candidate_months)
     end
@@ -286,7 +270,7 @@ module Feedkit
       schedule = DummyScheduleForPeriodStartCalculator.new(period: :day, at: { hour: 6 })
       time = Time.zone.parse("2024-10-15 06:30:00")
 
-      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:, unit: :month)
+      calculator = Feedkit::Schedule::PeriodStartCalculator.new(schedule:, time:)
 
       assert_equal [1], calculator.send(:candidate_days_in_month, time)
     end

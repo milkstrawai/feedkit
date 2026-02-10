@@ -51,7 +51,7 @@ module Feedkit
 
     def period_start_at(time = Time.current)
       time = normalize_time(time)
-      Feedkit::Schedule::PeriodStartCalculator.new(schedule: self, time:, unit: period).call
+      Feedkit::Schedule::PeriodStartCalculator.new(schedule: self, time:).call
     end
 
     def effective_conditions

@@ -15,10 +15,9 @@ module Feedkit
 
       MAX_WINDOWS = 600
 
-      def initialize(schedule:, time:, unit:)
+      def initialize(schedule:, time:)
         @schedule = schedule
         @time = time
-        @unit = unit
       end
 
       def call
@@ -33,7 +32,11 @@ module Feedkit
 
       private
 
-      attr_reader :schedule, :time, :unit
+      attr_reader :schedule, :time
+
+      def unit
+        schedule.period
+      end
 
       def find_windowed_candidate
         cursor = time
@@ -107,7 +110,6 @@ module Feedkit
         when :week  then candidate_week_dates(window_start)
         when :month then candidate_month_dates(window_start)
         when :year  then candidate_year_dates(window_start)
-        else raise ArgumentError, "Unknown unit: #{unit.inspect}"
         end
       end
 
@@ -172,7 +174,6 @@ module Feedkit
         when :week  then week_window_bounds(cursor_time)
         when :month then month_window_bounds(cursor_time)
         when :year  then year_window_bounds(cursor_time)
-        else raise ArgumentError, "Unknown unit: #{unit.inspect}"
         end
       end
 
