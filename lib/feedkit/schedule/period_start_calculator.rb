@@ -44,9 +44,8 @@ module Feedkit
 
         MAX_WINDOWS.times do
           window_start, window_end = window_bounds(cursor)
-          upper_bound = time < window_end ? time : window_end - 1.second
 
-          candidate = tick_candidates_for_window(window_start, window_end).reverse_each.find { |t| t <= upper_bound }
+          candidate = tick_candidates_for_window(window_start, window_end).reverse_each.find { |t| t <= time }
           return candidate if candidate
 
           cursor = window_start - 1.second
@@ -58,7 +57,8 @@ module Feedkit
       def window_bounds(cursor_time)
         args = unit == :week ? [:monday] : []
         start_time = cursor_time.public_send(:"beginning_of_#{unit}", *args)
-        [start_time, start_time + 1.public_send(unit)]
+        end_time = cursor_time.public_send(:"end_of_#{unit}", *args)
+        [start_time, end_time]
       end
 
       def tick_candidates_for_window(window_start, window_end)
@@ -101,7 +101,7 @@ module Feedkit
         candidate_hours.filter_map do |hour|
           candidate = build_candidate_time(window_start, date, hour)
           next unless candidate
-          next unless candidate >= window_start && candidate < window_end
+          next unless candidate.between?(window_start, window_end)
           next unless schedule.due?(candidate)
 
           candidate
